@@ -1,7 +1,7 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
-import { getAudioContext, isAudioContextAvailable } from "@/lib/audioContext";
+import {useEffect, useRef} from "react";
+import { getAudioContext } from "@/lib/audioContext";
 import { useHasBrowser } from "@/lib/useHasBrowser";
 
 interface AudioVisualizerProps {

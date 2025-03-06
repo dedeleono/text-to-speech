@@ -1,3 +1,8 @@
+// Define the interface for window with WebKit prefix
+interface WindowWithWebKit {
+    webkitAudioContext: typeof AudioContext;
+}
+
 let audioContext: AudioContext | null = null;
 
 export async function getAudioContext(): Promise<AudioContext> {
@@ -8,9 +13,9 @@ export async function getAudioContext(): Promise<AudioContext> {
     try {
         if(!audioContext) {
             const AudioContext = 
-             window.AudioContext || (window as any).webkitAudioContext;
+                window.AudioContext || (window as unknown as WindowWithWebKit).webkitAudioContext;
 
-             audioContext = new AudioContext();
+            audioContext = new AudioContext();
         }
 
         //Resume the audio context if it's suspended

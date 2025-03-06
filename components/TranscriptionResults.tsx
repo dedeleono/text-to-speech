@@ -1,4 +1,4 @@
-import {FileText, Copy, CheckCircle, XCircle} from "lucide-react";
+import {FileText, Copy, CheckCircle} from "lucide-react";
 import {useState} from "react";
 
 interface TranscriptionResultsProps {

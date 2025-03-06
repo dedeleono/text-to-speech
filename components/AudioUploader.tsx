@@ -325,8 +325,9 @@ const AudioUploader = () => {
                     ref={fileInputRef}
                     type="file"
                     onChange={(e) => {
-                      e.target.files?.[0] &&
+                      if (e.target.files?.[0]) {
                         handleFileChange(e.target.files[0]);
+                      }
                     }}
                     accept={ALLOWED_TYPES.join(",")}
                     className="hidden"

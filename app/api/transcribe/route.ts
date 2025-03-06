@@ -4,6 +4,7 @@ import { writeFile } from "fs/promises";
 import { unlink } from "fs/promises";
 import path from "path";
 import os from "os";
+import { createReadStream } from 'fs';
 
 export async function POST(request: NextRequest) {
     // const groq = new Groq({
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
         });
 
         const transcription = await groq.audio.transcriptions.create({
-            file: require("fs").createReadStream(tempFilePath),
+            file: createReadStream(tempFilePath),
             model: "whisper-large-v3",
             response_format: "json",
             language: "en",
