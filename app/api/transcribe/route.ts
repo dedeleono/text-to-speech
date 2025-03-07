@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
             file: createReadStream(tempFilePath),
             model: "whisper-large-v3-turbo",
             response_format: "json",
-            language: "en",
+            language: "es",
             temperature: 0.0,
         });
 
