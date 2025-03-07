@@ -15,7 +15,6 @@ interface TranscriptEmailProps {
 }
 
 export default function TranscriptEmail({
-  userEmail,
   transcript,
 }: TranscriptEmailProps) {
   return (
