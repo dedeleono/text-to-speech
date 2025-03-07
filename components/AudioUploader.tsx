@@ -15,7 +15,7 @@ import DiarizedResults from "./DiarizedResults";
 import { Transcript, TranscriptUtterance } from "assemblyai";
 import TranscriptionResults from "./TranscriptionResults";
 
-const ALLOWED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4"];
+// const ALLOWED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4"];
 
 interface DiarizedTranscript extends Omit<Transcript, 'utterances'> {
   utterances: TranscriptUtterance[];
@@ -25,7 +25,7 @@ const AudioUploader = () => {
   const hasBrowser = useHasBrowser();
 
   // const [file, setFile] = useState<File | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  // const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -377,7 +377,7 @@ const AudioUploader = () => {
                 </h3>
               </div>
               <AudioVisualizer
-                audioUrl={audioUrl}
+                audioUrl={null}
                 mediaStream={mediaStreamRef.current}
                 isLive={isRecording}
               />
