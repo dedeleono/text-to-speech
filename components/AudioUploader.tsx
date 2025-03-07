@@ -9,22 +9,25 @@ import {
   Volume2,
   FileAudio,
 } from "lucide-react";
-import TranscriptionResults from "./TranscriptionResults";
 import AudioVisualizer from "./AudioVisualizer";
 import { useHasBrowser } from "@/lib/useHasBrowser";
 import { getAudioContext, resumeAudioContext, setUserGesture } from "@/lib/audioContext";
 import { AudioRecorder } from "@/lib/audioRecorder";
+import DiarizedResults from "./DiarizedResults";
+import { Transcript, TranscriptUtterance } from "assemblyai";
 
 const ALLOWED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4"];
+
+interface DiarizedTranscript extends Omit<Transcript, 'utterances'> {
+  utterances: TranscriptUtterance[];
+}
 
 const AudioUploader = () => {
   const hasBrowser = useHasBrowser();
 
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [transcription, setTranscription] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const [error, setError] = useState<string>("");
   const [isRecording, setIsRecording] = useState<boolean>(false);
 
@@ -36,6 +39,8 @@ const AudioUploader = () => {
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
 
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+
+  const [diarizedResults, setDiarizedResults] = useState<DiarizedTranscript | null>(null);
 
   //Check for speech recognition support
   useEffect(() => {
@@ -122,7 +127,6 @@ const AudioUploader = () => {
 
         // Reset state
         setError("");
-        setTranscription("");
 
         // Ensure AudioContext is initialized and resumed
         if (audioContext) {
@@ -181,14 +185,13 @@ const AudioUploader = () => {
       try {
         console.log("Stopping recording...");
         
-        // Stop recording and get the audio blob
         const audioBlob = await audioRecorderRef.current.stopRecording();
-        
-        // Create form data and send to API
         const formData = new FormData();
         formData.append("file", audioBlob, "recording.webm");
 
         setIsLoading(true);
+        setError("");
+
         const response = await fetch("/api/transcribe", {
           method: "POST",
           body: formData,
@@ -197,10 +200,12 @@ const AudioUploader = () => {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Failed to transcribe audio");
+          throw new Error(data.error || "Failed to process recording");
         }
 
-        setTranscription(data.text);
+        if (data.transcription) {
+          setDiarizedResults(data.diarization);
+        }
       } catch (error) {
         console.error("Error stopping recording:", error);
         setError(error instanceof Error ? error.message : "Failed to process recording");
@@ -219,7 +224,6 @@ const AudioUploader = () => {
 
     setIsLoading(true);
     setError("");
-    setTranscription("");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -233,14 +237,16 @@ const AudioUploader = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error("Failed to transcribe audio.");
+        throw new Error(data.error || "Failed to process audio");
       }
 
-      setTranscription(data.text);
+      if (data.transcription) {
+        setDiarizedResults(data.diarization);
+      }
     } catch (error) {
-      console.error("Error submitting audio: ", error);
+      console.error("Error processing audio: ", error);
       setError(
-        "An error occurred while submitting the audio. Please try again."
+        error instanceof Error ? error.message : "An error occurred while processing the audio. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -248,32 +254,31 @@ const AudioUploader = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 text-white py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 text-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-white via-purple-300 to-blue-500 text-transparent bg-clip-text mb-4">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-purple-300 to-blue-500 text-transparent bg-clip-text mb-4">
             Audio Transcription App
           </h1>
-          <p className="text-lg text-white/80 max-w-2xl mx-auto">
-            Upload your audio file or record directly to get started with
-            transcription
+          <p className="text-base sm:text-lg text-white/80 max-w-2xl mx-auto">
+            Upload your audio file or record directly to get started with transcription
           </p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          <div className="space-y-6 lg:space-y-8">
             <div className="relative group">
               <div
-                className={`p-10 rounded-3xl backdrop-blur-xl transition-all duration-300 ${
+                className={`glass-card p-8 sm:p-10 rounded-3xl transition-all duration-300 ${
                   isRecording
-                    ? "bg-red-50/90 dark:bg-red-900/20 border-2 border-red-500 shadow-red-500/20"
-                    : "bg-white/50 dark:bg-gray-800/50 hover:bg-white/60 dark:hover:bg-gray-800/60"
+                    ? "border-red-500/50 shadow-red-500/20"
+                    : "hover:scale-[1.02]"
                 }`}
                 onDragOver={(e) => {
                   e.preventDefault();
                 }}
                 onDrop={handleDrop}
               >
-                <div className="flex flex-col items-center space-y-8">
+                <div className="flex flex-col items-center space-y-6 sm:space-y-8">
                   <div
                     className={`p-6 rounded-full transition-all duration-300 group-hover:scale-110 ${
                       isRecording
@@ -287,11 +292,11 @@ const AudioUploader = () => {
                       <FileAudio className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
                     )}
                   </div>
-                  <div className="text-center space-y-3">
-                    <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                  <div className="text-center space-y-2 sm:space-y-3">
+                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200">
                       {isRecording ? "Recording..." : "Drop or Click to Upload"}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300">
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
                       {isRecording
                         ? "Your audio is being recorded"
                         : "Supported formats: MP3, WAV, M4A"}
@@ -311,7 +316,7 @@ const AudioUploader = () => {
                   {!isRecording && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/30"
+                      className="btn-primary"
                     >
                       Choose File
                     </button>
@@ -319,9 +324,9 @@ const AudioUploader = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-white/50 dark:bg-gray-800/50 p-8 rounded-3xl backdrop-blur-xl transition-all duration-300">
+            <div className="glass-card p-6 sm:p-8 rounded-3xl">
               <div className="flex items-center justify-between gap-4 mb-6">
-                <Volume2 className="w-7 h-7 text-gray-800 dark:text-gray-200" />
+                <Volume2 className="w-6 h-6 sm:w-7 sm:h-7 text-gray-800 dark:text-gray-200" />
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                   Audio Visualization
                 </h3>
@@ -332,14 +337,12 @@ const AudioUploader = () => {
                 isLive={isRecording}
               />
             </div>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <button
                 onClick={handleSubmit}
                 disabled={!file || isLoading}
-                className={`flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-full transition-all duration-300 ${
-                  !file || isLoading
-                    ? "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
-                    : "bg-indigo-500 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30"
+                className={`btn-primary ${
+                  !file || isLoading ? "btn-disabled" : ""
                 }`}
               >
                 {isLoading ? (
@@ -359,12 +362,12 @@ const AudioUploader = () => {
                   isRecording ? handleStopRecording : handleStartRecording
                 }
                 disabled={!isSpeechSupported}
-                className={`flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-full transition-all duration-300 ${
-                  !isSpeechSupported
-                    ? "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
-                    : isRecording
-                    ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/30"
-                    : "bg-indigo-500 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30"
+                className={`${
+                  !isSpeechSupported 
+                    ? "btn-disabled" 
+                    : isRecording 
+                    ? "btn-danger" 
+                    : "btn-secondary"
                 }`}
               >
                 {isRecording ? (
@@ -386,13 +389,13 @@ const AudioUploader = () => {
               </div>
             )}
           </div>
-          <div className="relative bg-white/50 dark:bg-gray-800/50 p-8 rounded-3xl backdrop-blur-xl">
-            {transcription ? (
-              <TranscriptionResults text={transcription} />
+          <div className="glass-card p-6 sm:p-8 rounded-3xl min-h-[500px]">
+            {diarizedResults ? (
+              <DiarizedResults utterances={diarizedResults.utterances} />
             ) : (
               <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 dark:text-gray-400">
                 <FileAudio className="w-12 h-12 mb-4 opacity-50" />
-                <p className="text-lg">No transcription results yet.</p>
+                <p className="text-lg">No results yet.</p>
                 <p className="text-sm mt-2">
                   Upload an audio file or start recording to see results here.
                 </p>

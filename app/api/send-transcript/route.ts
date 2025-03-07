@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTranscriptEmail } from "@/lib/transcriptEmail";
 
+interface Utterance {
+    start: number;
+    end: number;
+    speaker: number;
+    text: string;
+}
+
 export async function POST(request: NextRequest) {
     try {
-        const { email, transcript } = await request.json();
+        const { email, utterances } = await request.json();
 
-        if (!email || !transcript) {
+        if (!email || !utterances) {
             return NextResponse.json(
-                { error: "Email and transcript are required" },
+                { error: "Email and utterances are required" },
                 { status: 400 }
             );
         }
+
+        // Format utterances into transcript format
+        const transcript = utterances
+            .map((u: Utterance) => {
+                const time = `${formatTime(u.start)} - ${formatTime(u.end)}`;
+                return `[Hablante ${u.speaker}] (${time})\n${u.text}\n`;
+            })
+            .join('\n');
 
         await sendTranscriptEmail(email, transcript);
 
@@ -25,4 +40,11 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-} 
+}
+
+const formatTime = (milliseconds: number): string => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}; 

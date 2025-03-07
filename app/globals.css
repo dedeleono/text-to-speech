@@ -5,17 +5,82 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --secondary: #7c3aed;
+  --secondary-hover: #6d28d9;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --error: #ef4444;
+  --error-hover: #dc2626;
+  --success: #22c55e;
+  --success-hover: #16a34a;
+  --card-bg: rgba(255, 255, 255, 0.5);
+  --card-bg-hover: rgba(255, 255, 255, 0.6);
+  --card-border: rgba(255, 255, 255, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --card-bg: rgba(17, 24, 39, 0.5);
+    --card-bg-hover: rgba(17, 24, 39, 0.6);
+    --card-border: rgba(255, 255, 255, 0.05);
   }
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-xl transition-all duration-300;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+  }
+  
+  .glass-card:hover {
+    background: var(--card-bg-hover);
+  }
+
+  .btn-primary {
+    @apply flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-full transition-all duration-300;
+    background: var(--primary);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-hover);
+    @apply shadow-lg hover:shadow-xl;
+  }
+
+  .btn-secondary {
+    @apply flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-full transition-all duration-300;
+    background: var(--secondary);
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: var(--secondary-hover);
+    @apply shadow-lg hover:shadow-xl;
+  }
+
+  .btn-danger {
+    @apply flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-full transition-all duration-300;
+    background: var(--error);
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: var(--error-hover);
+    @apply shadow-lg hover:shadow-xl;
+  }
+
+  .btn-disabled {
+    @apply bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed;
+  }
 }
