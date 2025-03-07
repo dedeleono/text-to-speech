@@ -53,12 +53,13 @@ const AudioUploader = () => {
   }, [hasBrowser]);
 
   useEffect(() => {
+    const mediaStream = mediaStreamRef.current;
     return () => {
       if (audioRecorderRef.current) {
         audioRecorderRef.current.stopRecording().catch(console.error);
       }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -129,7 +130,7 @@ const AudioUploader = () => {
         }
 
         // Check if running on iOS Safari
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
         if (isIOS) {
           // On iOS, we need to ensure the user has granted permissions
           const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
