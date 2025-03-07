@@ -128,6 +128,17 @@ const AudioUploader = () => {
           await resumeAudioContext();
         }
 
+        // Check if running on iOS Safari
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        if (isIOS) {
+          // On iOS, we need to ensure the user has granted permissions
+          const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+          if (permissionStatus.state === 'denied') {
+            setError("Microphone access is blocked. Please enable it in your iOS Settings > Safari > Settings for this website.");
+            return;
+          }
+        }
+
         // Create new AudioRecorder instance
         audioRecorderRef.current = new AudioRecorder();
         
@@ -149,6 +160,9 @@ const AudioUploader = () => {
               break;
             case "NotReadableError":
               errorMessage = "Microphone is in use by another application.";
+              break;
+            case "SecurityError":
+              errorMessage = "Microphone access is blocked. Please check your browser settings.";
               break;
             default:
               errorMessage += "Please check your microphone settings.";

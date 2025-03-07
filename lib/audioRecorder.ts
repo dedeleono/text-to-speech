@@ -5,23 +5,32 @@ export class AudioRecorder {
     private mimeType: string;
 
     constructor() {
-        this.mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-            ? "audio/webm;codecs=opus"
-            : "audio/webm";
+        // Check for supported MIME types in order of preference
+        const mimeTypes = [
+            "audio/webm;codecs=opus",
+            "audio/webm",
+            "audio/mp4",
+            "audio/aac",
+            "audio/wav"
+        ];
+
+        this.mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || "audio/webm";
     }
 
     async startRecording(): Promise<void> {
         try {
-            // Get user media stream
+            // Request microphone access with specific constraints for iOS
             this.stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
+                    sampleRate: 44100,
+                    channelCount: 1
                 },
             });
 
-            // Create MediaRecorder
+            // Create MediaRecorder with the supported MIME type
             this.mediaRecorder = new MediaRecorder(this.stream, {
                 mimeType: this.mimeType,
                 audioBitsPerSecond: 128000
@@ -36,7 +45,7 @@ export class AudioRecorder {
                 }
             };
 
-            // Start recording
+            // Start recording with smaller timeslices for better iOS compatibility
             this.mediaRecorder.start(100);
             console.log("MediaRecorder started with state:", this.mediaRecorder.state);
         } catch (error) {
