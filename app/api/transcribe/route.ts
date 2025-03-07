@@ -80,8 +80,7 @@ export async function POST(request: NextRequest) {
                     const transcript = await assemblyClient.transcripts.create({
                         audio_url: uploadUrl,
                         speaker_labels: true,
-                        // Only set speakers_expected if audio is longer than 2 minutes
-                        ...(buffer.length > 2 * 60 * 1000 && { speakers_expected: 2 }),
+                        speakers_expected: 2, // Default to 2 speakers but AssemblyAI will adapt
                         language_code: "es",
                         punctuate: true,
                         format_text: true,

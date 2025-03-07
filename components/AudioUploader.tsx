@@ -8,6 +8,7 @@ import {
   StopCircle,
   Volume2,
   FileAudio,
+  AlertCircle,
 } from "lucide-react";
 import AudioVisualizer from "./AudioVisualizer";
 import { useHasBrowser } from "@/lib/useHasBrowser";
@@ -15,6 +16,7 @@ import { getAudioContext, resumeAudioContext, setUserGesture } from "@/lib/audio
 import { AudioRecorder } from "@/lib/audioRecorder";
 import DiarizedResults from "./DiarizedResults";
 import { Transcript, TranscriptUtterance } from "assemblyai";
+import TranscriptionResults from "./TranscriptionResults";
 
 const ALLOWED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4"];
 
@@ -28,8 +30,10 @@ const AudioUploader = () => {
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [diarizedResults, setDiarizedResults] = useState<DiarizedTranscript | null>(null);
+  const [transcriptionText, setTranscriptionText] = useState<string | null>(null);
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState<boolean>(false);
@@ -40,7 +44,8 @@ const AudioUploader = () => {
 
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
-  const [diarizedResults, setDiarizedResults] = useState<DiarizedTranscript | null>(null);
+  // Add isMultipleSpeakers state
+  const [isMultipleSpeakers, setIsMultipleSpeakers] = useState(false);
 
   //Check for speech recognition support
   useEffect(() => {
@@ -181,73 +186,90 @@ const AudioUploader = () => {
   };
 
   const handleStopRecording = async () => {
-    if (audioRecorderRef.current && isRecording) {
-      try {
-        console.log("Stopping recording...");
-        
-        const audioBlob = await audioRecorderRef.current.stopRecording();
-        const formData = new FormData();
-        formData.append("file", audioBlob, "recording.webm");
-
-        setIsLoading(true);
-        setError("");
-
-        const response = await fetch("/api/transcribe", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to process recording");
-        }
-
-        if (data.transcription) {
-          setDiarizedResults(data.diarization);
-        }
-      } catch (error) {
-        console.error("Error stopping recording:", error);
-        setError(error instanceof Error ? error.message : "Failed to process recording");
-      } finally {
-        setIsLoading(false);
-        setIsRecording(false);
-        audioRecorderRef.current = null;
-      }
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!file) {
-      return;
-    }
-
+    setIsRecording(false);
     setIsLoading(true);
-    setError("");
-
-    const formData = new FormData();
-    formData.append("file", file);
+    setError(null);
+    setDiarizedResults(null);
+    setTranscriptionText(null);
 
     try {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+
+      if (!audioRecorderRef.current) {
+        throw new Error("No audio recording available");
+      }
+
+      const audioBlob = await audioRecorderRef.current.stopRecording();
+      const audioFile = new File([audioBlob], "recording.wav", {
+        type: "audio/wav",
+      });
+
+      const formData = new FormData();
+      formData.append("file", audioFile);
+
       const response = await fetch("/api/transcribe", {
         method: "POST",
         body: formData,
       });
 
+      if (!response.ok) {
+        throw new Error("Failed to process audio");
+      }
+
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setDiarizedResults(data.diarization);
+      if (data.transcription) {
+        setTranscriptionText(data.transcription.text);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process audio");
+      console.error("Error processing audio:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!file) return;
+
+    setIsLoading(true);
+    setError(null);
+    setDiarizedResults(null);
+    setTranscriptionText(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to process audio");
+        throw new Error("Failed to process audio");
       }
 
-      if (data.transcription) {
-        setDiarizedResults(data.diarization);
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
       }
-    } catch (error) {
-      console.error("Error processing audio: ", error);
-      setError(
-        error instanceof Error ? error.message : "An error occurred while processing the audio. Please try again."
-      );
+
+      setDiarizedResults(data.diarization);
+      if (data.transcription) {
+        setTranscriptionText(data.transcription.text);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process audio");
+      console.error("Error processing audio:", err);
     } finally {
       setIsLoading(false);
     }
@@ -261,73 +283,99 @@ const AudioUploader = () => {
             Audio Transcription App
           </h1>
           <p className="text-base sm:text-lg text-white/80 max-w-2xl mx-auto">
-            Upload your audio file or record directly to get started with transcription
+            Record your voice to get started with transcription
           </p>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           <div className="space-y-6 lg:space-y-8">
-            <div className="relative group">
-              <div
-                className={`glass-card p-8 sm:p-10 rounded-3xl transition-all duration-300 ${
-                  isRecording
-                    ? "border-red-500/50 shadow-red-500/20"
-                    : "hover:scale-[1.02]"
-                }`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                }}
-                onDrop={handleDrop}
-              >
-                <div className="flex flex-col items-center space-y-6 sm:space-y-8">
-                  <div
-                    className={`p-6 rounded-full transition-all duration-300 group-hover:scale-110 ${
-                      isRecording
-                        ? "bg-red-100 dark:bg-red-900/50"
-                        : "bg-indigo-100 dark:bg-indigo-900/20"
-                    }`}
-                  >
-                    {isRecording ? (
-                      <FileAudio className="w-12 h-12 text-red-600 dark:text-red-400" />
-                    ) : (
-                      <FileAudio className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
-                    )}
+            {/* Multiple Speakers Toggle */}
+            <div className="glass-card p-6 rounded-3xl">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-500/10 rounded-lg">
+                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
                   </div>
-                  <div className="text-center space-y-2 sm:space-y-3">
-                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                      {isRecording ? "Recording..." : "Drop or Click to Upload"}
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
-                      {isRecording
-                        ? "Your audio is being recorded"
-                        : "Supported formats: MP3, WAV, M4A"}
-                    </p>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleFileChange(e.target.files[0]);
-                      }
-                    }}
-                    accept={ALLOWED_TYPES.join(",")}
-                    className="hidden"
-                  />
-                  {!isRecording && (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn-primary"
-                    >
-                      Choose File
-                    </button>
-                  )}
+                  <span className="text-lg font-medium text-gray-800 dark:text-gray-200">Multiple Speakers</span>
                 </div>
+                <div 
+                  onClick={() => setIsMultipleSpeakers(!isMultipleSpeakers)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isMultipleSpeakers ? 'bg-indigo-500' : 'bg-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isMultipleSpeakers ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </div>
+              </label>
+            </div>
+
+            {/* Recording Section */}
+            <div className="glass-card p-8 sm:p-10 rounded-3xl">
+              <div className="flex flex-col items-center space-y-8">
+                {/* Recording Status */}
+                <div className={`p-8 rounded-full transition-all duration-500 ${
+                  isRecording 
+                    ? "bg-red-500/10 animate-pulse" 
+                    : "bg-indigo-500/10"
+                }`}>
+                  <Mic className={`w-16 h-16 transition-colors duration-500 ${
+                    isRecording 
+                      ? "text-red-500" 
+                      : "text-indigo-500"
+                  }`} />
+                </div>
+
+                {/* Status Text */}
+                <div className="text-center space-y-2">
+                  <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                    {isRecording ? "Recording in Progress..." : "Ready to Record"}
+                  </h3>
+                  <p className="text-base text-gray-600 dark:text-gray-300">
+                    {isRecording 
+                      ? "Click stop when you're done" 
+                      : "Click record to start"}
+                  </p>
+                </div>
+
+                {/* Record Button */}
+                <button
+                  onClick={isRecording ? handleStopRecording : handleStartRecording}
+                  disabled={!isSpeechSupported}
+                  className={`px-8 py-4 rounded-2xl font-medium text-lg transition-all duration-300 flex items-center gap-3 ${
+                    !isSpeechSupported 
+                      ? "bg-gray-400 cursor-not-allowed" 
+                      : isRecording 
+                        ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/25" 
+                        : "bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-500/25"
+                  }`}
+                >
+                  {isRecording ? (
+                    <>
+                      <StopCircle className="w-6 h-6" />
+                      Stop Recording
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-6 h-6" />
+                      Start Recording
+                    </>
+                  )}
+                </button>
               </div>
             </div>
+
+            {/* Audio Visualization */}
             <div className="glass-card p-6 sm:p-8 rounded-3xl">
-              <div className="flex items-center justify-between gap-4 mb-6">
-                <Volume2 className="w-6 h-6 sm:w-7 sm:h-7 text-gray-800 dark:text-gray-200" />
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-2 bg-indigo-500/10 rounded-lg">
+                  <Volume2 className="w-6 h-6 text-indigo-500" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
                   Audio Visualization
                 </h3>
               </div>
@@ -337,67 +385,51 @@ const AudioUploader = () => {
                 isLive={isRecording}
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <button
-                onClick={handleSubmit}
-                disabled={!file || isLoading}
-                className={`btn-primary ${
-                  !file || isLoading ? "btn-disabled" : ""
-                }`}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5" />
-                    Transcribe Audio
-                  </>
-                )}
-              </button>
-              <button
-                onClick={
-                  isRecording ? handleStopRecording : handleStartRecording
-                }
-                disabled={!isSpeechSupported}
-                className={`${
-                  !isSpeechSupported 
-                    ? "btn-disabled" 
-                    : isRecording 
-                    ? "btn-danger" 
-                    : "btn-secondary"
-                }`}
-              >
-                {isRecording ? (
-                  <>
-                    <StopCircle className="w-5 h-5" />
-                    Stop
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-5 h-5" />
-                    Record
-                  </>
-                )}
-              </button>
-            </div>
+
+            {/* Error Display */}
             {error && (
-              <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm">
-                {error}
+              <div className="glass-card p-6 rounded-3xl bg-red-500/10 border border-red-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-500/10 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                  </div>
+                  <p className="text-red-500 font-medium">{error}</p>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Results Section */}
           <div className="glass-card p-6 sm:p-8 rounded-3xl min-h-[500px]">
-            {diarizedResults ? (
-              <DiarizedResults utterances={diarizedResults.utterances} />
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-indigo-500/30 rounded-full animate-spin">
+                    <div className="absolute top-0 left-0 w-16 h-16 border-4 border-indigo-500 rounded-full animate-spin-fast" style={{ animationDirection: 'reverse' }}></div>
+                  </div>
+                </div>
+                <p className="text-lg font-medium text-gray-800 dark:text-gray-200">Processing Audio...</p>
+              </div>
+            ) : diarizedResults ? (
+              (() => {
+                // Use diarization only when multiple speakers is enabled
+                if (isMultipleSpeakers) {
+                  return <DiarizedResults utterances={diarizedResults.utterances} />;
+                }
+                
+                // Otherwise use simple transcription
+                if (transcriptionText) {
+                  return <TranscriptionResults text={transcriptionText} />;
+                }
+                
+                return null;
+              })()
             ) : (
               <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 dark:text-gray-400">
-                <FileAudio className="w-12 h-12 mb-4 opacity-50" />
-                <p className="text-lg">No results yet.</p>
+                <Mic className="w-12 h-12 mb-4 opacity-50" />
+                <p className="text-lg">No results yet</p>
                 <p className="text-sm mt-2">
-                  Upload an audio file or start recording to see results here.
+                  Start recording to see your transcription here
                 </p>
               </div>
             )}
