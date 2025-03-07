@@ -28,7 +28,7 @@ const AudioUploader = () => {
   const [error, setError] = useState<string>("");
   const [isRecording, setIsRecording] = useState<boolean>(false);
 
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState<boolean>(false);
 
   //Refs
@@ -57,11 +57,11 @@ const AudioUploader = () => {
       if (audioRecorderRef.current) {
         audioRecorderRef.current.stopRecording().catch(console.error);
       }
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop());
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [mediaStream]);
+  }, []);
 
   // Initialize AudioContext on mount
   useEffect(() => {
@@ -313,7 +313,7 @@ const AudioUploader = () => {
               </div>
               <AudioVisualizer
                 audioUrl={audioUrl}
-                mediaStream={mediaStream}
+                mediaStream={mediaStreamRef.current}
                 isLive={isRecording}
               />
             </div>
