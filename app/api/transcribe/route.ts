@@ -12,6 +12,11 @@ const assemblyClient = new AssemblyAI({
     apiKey: process.env.ASSEMBLY_API_KEY || '',
 });
 
+// Validate API key
+if (!process.env.ASSEMBLY_API_KEY) {
+    console.error("AssemblyAI API key is not configured");
+}
+
 interface TranscriptionResponse {
     transcription: {
         text: string;
@@ -61,6 +66,10 @@ export async function POST(request: NextRequest) {
             // AssemblyAI diarization
             (async () => {
                 try {
+                    if (!process.env.ASSEMBLY_API_KEY) {
+                        throw new Error("AssemblyAI API key is not configured. Please check your environment variables.");
+                    }
+
                     console.log("Starting AssemblyAI upload process...");
                     
                     // Create a new file stream for AssemblyAI
