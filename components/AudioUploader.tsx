@@ -4,10 +4,9 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Mic,
   StopCircle,
-  Volume2,
   AlertCircle,
 } from "lucide-react";
-import AudioVisualizer from "./AudioVisualizer";
+// import AudioVisualizer from "./AudioVisualizer";
 import { useHasBrowser } from "@/lib/useHasBrowser";
 import { getAudioContext, resumeAudioContext, setUserGesture } from "@/lib/audioContext";
 import { AudioRecorder } from "@/lib/audioRecorder";
@@ -291,91 +290,83 @@ const AudioUploader = () => {
               <label className="flex items-center justify-between cursor-pointer">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-500/10 rounded-lg">
-                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <svg
+                      className="w-5 h-5 text-indigo-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
                     </svg>
                   </div>
-                  <span className="text-lg font-medium text-gray-800 dark:text-gray-200">Multiple Speakers</span>
+                  <span className="text-lg font-medium text-gray-800 dark:text-gray-200">
+                    Multiple Speakers
+                  </span>
                 </div>
-                <div 
+                <div
                   onClick={() => setIsMultipleSpeakers(!isMultipleSpeakers)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isMultipleSpeakers ? 'bg-indigo-500' : 'bg-gray-400'
+                    isMultipleSpeakers ? "bg-indigo-500" : "bg-gray-400"
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isMultipleSpeakers ? 'translate-x-6' : 'translate-x-1'
+                      isMultipleSpeakers ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </div>
               </label>
             </div>
 
-            {/* Tabs */}
-            <div className="glass-card p-4 rounded-3xl">
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setActiveTab('record')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    activeTab === 'record'
-                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                      : 'bg-white/20 text-white hover:bg-white/30'
-                  }`}
-                >
-                  Record Audio
-                </button>
-                <button
-                  onClick={() => setActiveTab('upload')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    activeTab === 'upload'
-                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                      : 'bg-white/20 text-white hover:bg-white/30'
-                  }`}
-                >
-                  Upload File
-                </button>
-              </div>
-            </div>
-
             {/* Recording Section */}
-            {activeTab === 'record' && (
+            {activeTab === "record" && (
               <div className="glass-card p-8 sm:p-10 rounded-3xl">
                 <div className="flex flex-col items-center space-y-8">
                   {/* Recording Status */}
-                  <div className={`p-8 rounded-full transition-all duration-500 ${
-                    isRecording 
-                      ? "bg-red-500/10 animate-pulse" 
-                      : "bg-indigo-500/10"
-                  }`}>
-                    <Mic className={`w-16 h-16 transition-colors duration-500 ${
-                      isRecording 
-                        ? "text-red-500" 
-                        : "text-indigo-500"
-                    }`} />
+                  <div
+                    className={`p-8 rounded-full transition-all duration-500 ${
+                      isRecording
+                        ? "bg-red-500/10 animate-pulse"
+                        : "bg-indigo-500/10"
+                    }`}
+                  >
+                    <Mic
+                      className={`w-16 h-16 transition-colors duration-500 ${
+                        isRecording ? "text-red-500" : "text-indigo-500"
+                      }`}
+                    />
                   </div>
 
                   {/* Status Text */}
                   <div className="text-center space-y-2">
                     <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                      {isRecording ? "Recording in Progress..." : "Ready to Record"}
+                      {isRecording
+                        ? "Recording in Progress..."
+                        : "Ready to Record"}
                     </h3>
                     <p className="text-base text-gray-600 dark:text-gray-300">
-                      {isRecording 
-                        ? "Click stop when you're done" 
+                      {isRecording
+                        ? "Click stop when you're done"
                         : "Click record to start"}
                     </p>
                   </div>
 
                   {/* Record Button */}
                   <button
-                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                    onClick={
+                      isRecording ? handleStopRecording : handleStartRecording
+                    }
                     disabled={!isSpeechSupported}
                     className={`px-8 py-4 rounded-2xl font-medium text-lg transition-all duration-300 flex items-center gap-3 ${
-                      !isSpeechSupported 
-                        ? "bg-gray-400 cursor-not-allowed" 
-                        : isRecording 
-                          ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/25" 
+                      !isSpeechSupported
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : isRecording
+                          ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/25"
                           : "bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-500/25"
                     }`}
                   >
@@ -396,17 +387,17 @@ const AudioUploader = () => {
             )}
 
             {/* File Upload Section */}
-            {activeTab === 'upload' && (
+            {activeTab === "upload" && (
               <div className="glass-card p-8 sm:p-10 rounded-3xl">
                 <div className="flex flex-col items-center space-y-8">
                   <div className="p-8 rounded-full bg-indigo-500/10">
-                    <svg 
+                    <svg
                       className="w-16 h-16 text-indigo-500"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path 
+                      <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
@@ -425,11 +416,16 @@ const AudioUploader = () => {
                   </div>
 
                   <div className="w-full max-w-md">
-                    <label className="flex flex-col items-center px-4 py-6 bg-white/10 text-gray-200 rounded-xl border-2 border-dashed border-indigo-500/50 cursor-pointer hover:bg-white/20 transition-colors duration-200">
+                    <label
+                      className="flex flex-col items-center px-4 py-6 bg-white/10 text-gray-200 rounded-xl border-2 border-dashed border-indigo-500/50 cursor-pointer hover:bg-white/20 transition-colors duration-200"
+                      onDrop={handleDrop}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDragEnter={(e) => e.preventDefault()}
+                    >
                       <input
                         type="file"
                         className="hidden"
-                        accept={ALLOWED_TYPES.join(',')}
+                        accept={ALLOWED_TYPES.join(",")}
                         onChange={(e) => {
                           const selectedFile = e.target.files?.[0];
                           if (selectedFile) {
@@ -438,14 +434,18 @@ const AudioUploader = () => {
                         }}
                         ref={fileInputRef}
                       />
-                      <span className="text-sm">Click to browse or drag and drop</span>
+                      <span className="text-sm">
+                        Click to browse or drag and drop
+                      </span>
                     </label>
                   </div>
 
                   {file && (
                     <div className="w-full">
                       <div className="flex items-center justify-between p-4 bg-white/10 rounded-xl">
-                        <span className="text-gray-200 truncate">{file.name}</span>
+                        <span className="text-gray-200 truncate">
+                          {file.name}
+                        </span>
                         <button
                           onClick={handleSubmit}
                           className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors duration-200"
@@ -460,7 +460,7 @@ const AudioUploader = () => {
             )}
 
             {/* Audio Visualization */}
-            <div className="glass-card p-6 sm:p-8 rounded-3xl">
+            {/* <div className="glass-card p-6 sm:p-8 rounded-3xl">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-2 bg-indigo-500/10 rounded-lg">
                   <Volume2 className="w-6 h-6 text-indigo-500" />
@@ -474,6 +474,30 @@ const AudioUploader = () => {
                 mediaStream={mediaStreamRef.current}
                 isLive={isRecording}
               />
+            </div> */}
+            <div className="glass-card p-4 rounded-3xl">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setActiveTab("record")}
+                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                    activeTab === "record"
+                      ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
+                      : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
+                >
+                  Record Audio
+                </button>
+                <button
+                  onClick={() => setActiveTab("upload")}
+                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                    activeTab === "upload"
+                      ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
+                      : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
+                >
+                  Upload File
+                </button>
+              </div>
             </div>
 
             {/* Error Display */}
@@ -495,23 +519,30 @@ const AudioUploader = () => {
               <div className="flex flex-col items-center justify-center h-full gap-4">
                 <div className="relative">
                   <div className="w-16 h-16 border-4 border-indigo-500/30 rounded-full animate-spin">
-                    <div className="absolute top-0 left-0 w-16 h-16 border-4 border-indigo-500 rounded-full animate-spin-fast" style={{ animationDirection: 'reverse' }}></div>
+                    <div
+                      className="absolute top-0 left-0 w-16 h-16 border-4 border-indigo-500 rounded-full animate-spin-fast"
+                      style={{ animationDirection: "reverse" }}
+                    ></div>
                   </div>
                 </div>
-                <p className="text-lg font-medium text-gray-800 dark:text-gray-200">Processing Audio...</p>
+                <p className="text-lg font-medium text-gray-800 dark:text-gray-200">
+                  Processing Audio...
+                </p>
               </div>
             ) : diarizedResults ? (
               (() => {
                 // Use diarization only when multiple speakers is enabled
                 if (isMultipleSpeakers) {
-                  return <DiarizedResults utterances={diarizedResults.utterances} />;
+                  return (
+                    <DiarizedResults utterances={diarizedResults.utterances} />
+                  );
                 }
-                
+
                 // Otherwise use simple transcription
                 if (transcriptionText) {
                   return <TranscriptionResults text={transcriptionText} />;
                 }
-                
+
                 return null;
               })()
             ) : (
