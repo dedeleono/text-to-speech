@@ -24,7 +24,6 @@ const AudioUploader = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcription, setTranscription] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [audioChunks, setAudioChunks] = useState<BlobPart[]>([]);
 
   const [error, setError] = useState<string>("");
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -37,7 +36,6 @@ const AudioUploader = () => {
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
 
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
 
   //Check for speech recognition support
   useEffect(() => {
