@@ -3,11 +3,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Mic,
-  Upload,
-  Loader2,
   StopCircle,
   Volume2,
-  FileAudio,
   AlertCircle,
 } from "lucide-react";
 import AudioVisualizer from "./AudioVisualizer";
@@ -27,7 +24,7 @@ interface DiarizedTranscript extends Omit<Transcript, 'utterances'> {
 const AudioUploader = () => {
   const hasBrowser = useHasBrowser();
 
-  const [file, setFile] = useState<File | null>(null);
+  // const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +36,7 @@ const AudioUploader = () => {
   const [isSpeechSupported, setIsSpeechSupported] = useState<boolean>(false);
 
   //Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
 
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
@@ -89,40 +86,40 @@ const AudioUploader = () => {
     }
   }, [hasBrowser]);
 
-  const handleFileChange = (selectedFile: File) => {
-    setError("");
+  // const handleFileChange = (selectedFile: File) => {
+  //   setError("");
 
-    if (!ALLOWED_TYPES.includes(selectedFile.type)) {
-      setError("Invalid file type. Please upload a valid audio file.");
-      return;
-    }
+  //   if (!ALLOWED_TYPES.includes(selectedFile.type)) {
+  //     setError("Invalid file type. Please upload a valid audio file.");
+  //     return;
+  //   }
 
-    const maxSize = 25 * 1024 * 1024; //25MB
-    if (selectedFile.size > maxSize) {
-      setError("File size exceeds the maximum limit of 25MB.");
-      return;
-    }
+  //   const maxSize = 25 * 1024 * 1024; //25MB
+  //   if (selectedFile.size > maxSize) {
+  //     setError("File size exceeds the maximum limit of 25MB.");
+  //     return;
+  //   }
 
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl);
-    }
+  //   if (audioUrl) {
+  //     URL.revokeObjectURL(audioUrl);
+  //   }
 
-    setFile(selectedFile);
-    setAudioUrl(URL.createObjectURL(selectedFile));
+  //   setFile(selectedFile);
+  //   setAudioUrl(URL.createObjectURL(selectedFile));
 
-    if (isRecording) {
-      handleStopRecording();
-    }
-  };
+  //   if (isRecording) {
+  //     handleStopRecording();
+  //   }
+  // };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
+  // const handleDrop = (e: React.DragEvent) => {
+  //   e.preventDefault();
+  //   const droppedFile = e.dataTransfer.files[0];
 
-    if (droppedFile) {
-      handleFileChange(droppedFile);
-    }
-  };
+  //   if (droppedFile) {
+  //     handleFileChange(droppedFile);
+  //   }
+  // };
 
   const handleStartRecording = async () => {
     if (!isRecording) {
@@ -236,44 +233,44 @@ const AudioUploader = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!file) return;
+  // const handleSubmit = async () => {
+  //   if (!file) return;
 
-    setIsLoading(true);
-    setError(null);
-    setDiarizedResults(null);
-    setTranscriptionText(null);
+  //   setIsLoading(true);
+  //   setError(null);
+  //   setDiarizedResults(null);
+  //   setTranscriptionText(null);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("file", file);
 
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
+  //     const response = await fetch("/api/transcribe", {
+  //       method: "POST",
+  //       body: formData,
+  //     });
 
-      if (!response.ok) {
-        throw new Error("Failed to process audio");
-      }
+  //     if (!response.ok) {
+  //       throw new Error("Failed to process audio");
+  //     }
 
-      const data = await response.json();
+  //     const data = await response.json();
       
-      if (data.error) {
-        throw new Error(data.error);
-      }
+  //     if (data.error) {
+  //       throw new Error(data.error);
+  //     }
 
-      setDiarizedResults(data.diarization);
-      if (data.transcription) {
-        setTranscriptionText(data.transcription.text);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process audio");
-      console.error("Error processing audio:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     setDiarizedResults(data.diarization);
+  //     if (data.transcription) {
+  //       setTranscriptionText(data.transcription.text);
+  //     }
+  //   } catch (err) {
+  //     setError(err instanceof Error ? err.message : "Failed to process audio");
+  //     console.error("Error processing audio:", err);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 text-white py-12 px-4 sm:px-6 lg:px-8">
