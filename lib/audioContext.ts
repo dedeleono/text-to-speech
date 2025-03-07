@@ -4,6 +4,11 @@ interface WindowWithWebKit {
 }
 
 let audioContext: AudioContext | null = null;
+let hasUserGesture = false;
+
+export function setUserGesture() {
+    hasUserGesture = true;
+}
 
 export async function getAudioContext(): Promise<AudioContext> {
     if(typeof window === "undefined") {
@@ -18,9 +23,8 @@ export async function getAudioContext(): Promise<AudioContext> {
             audioContext = new AudioContext();
         }
 
-        //Resume the audio context if it's suspended
-
-        if(audioContext.state === "suspended"){
+        // Only attempt to resume if we have user gesture
+        if(hasUserGesture && audioContext.state === "suspended") {
             await audioContext.resume();
         }
 
@@ -31,6 +35,16 @@ export async function getAudioContext(): Promise<AudioContext> {
     }
 }
 
+export async function resumeAudioContext(): Promise<void> {
+    if (!hasUserGesture) {
+        throw new Error("AudioContext can only be resumed after a user gesture");
+    }
+
+    if (audioContext && audioContext.state === "suspended") {
+        await audioContext.resume();
+    }
+}
+
 export function closeAudioContext() {
     if(audioContext) {
         audioContext.close().catch(console.error);
@@ -38,7 +52,7 @@ export function closeAudioContext() {
     }
 }
 
-//Add a utilty functino to check if AudioConect is available and active
+// Add a utility function to check if AudioContext is available and active
 export function isAudioContextAvailable(): boolean {
     return !!(audioContext && audioContext.state === "running");
 }

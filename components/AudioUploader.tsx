@@ -12,6 +12,8 @@ import {
 import TranscriptionResults from "./TranscriptionResults";
 import AudioVisualizer from "./AudioVisualizer";
 import { useHasBrowser } from "@/lib/useHasBrowser";
+import { getAudioContext, resumeAudioContext, setUserGesture } from "@/lib/audioContext";
+import { AudioRecorder } from "@/lib/audioRecorder";
 
 const ALLOWED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4"];
 
@@ -32,7 +34,10 @@ const AudioUploader = () => {
 
   //Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioRecorderRef = useRef<AudioRecorder | null>(null);
+
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
 
   //Check for speech recognition support
   useEffect(() => {
@@ -51,14 +56,29 @@ const AudioUploader = () => {
 
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
+      if (audioRecorderRef.current) {
+        audioRecorderRef.current.stopRecording().catch(console.error);
       }
       if (mediaStream) {
         mediaStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, [mediaStream]);
+
+  // Initialize AudioContext on mount
+  useEffect(() => {
+    if (hasBrowser) {
+      const initContext = async () => {
+        try {
+          const context = await getAudioContext();
+          setAudioContext(context);
+        } catch (error) {
+          console.error("Failed to initialize AudioContext:", error);
+        }
+      };
+      initContext();
+    }
+  }, [hasBrowser]);
 
   const handleFileChange = (selectedFile: File) => {
     setError("");
@@ -98,141 +118,83 @@ const AudioUploader = () => {
   const handleStartRecording = async () => {
     if (!isRecording) {
       try {
-        setAudioChunks([]); // Reset chunks at start of recording
-        // First check if we can access the microphone
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-        
-        // Stop any existing stream first
-        if (mediaStream) {
-          mediaStream.getTracks().forEach(track => track.stop());
-        }
-        
-        setMediaStream(stream);
-        setIsRecording(true);
+        // Set user gesture flag
+        setUserGesture();
+
+        // Reset state
+        setError("");
         setTranscription("");
-        setError(""); // Clear any previous errors
 
-        // Create MediaRecorder
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'audio/webm'
-        });
-        console.log("MediaRecorder created with state:", mediaRecorder.state);
+        // Ensure AudioContext is initialized and resumed
+        if (audioContext) {
+          await resumeAudioContext();
+        }
 
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            console.log("Data available event:", event.data.size, "bytes");
-            setAudioChunks(prev => [...prev, event.data]);
-          }
-        };
-
-        mediaRecorder.onstop = async () => {
-          console.log("MediaRecorder stopped. Chunks collected:", audioChunks.length);
-          
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          console.log("Audio blob created, size:", audioBlob.size, "bytes");
-
-          if (audioBlob.size === 0) {
-            setError("No audio was recorded. Please try again.");
-            setIsRecording(false);
-            return;
-          }
-
-          const formData = new FormData();
-          formData.append('file', audioBlob, 'recording.webm');
-
-          try {
-            setIsLoading(true);
-            const response = await fetch('/api/transcribe', {
-              method: 'POST',
-              body: formData,
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.error?.message || 'Failed to transcribe audio');
-            }
-
-            setTranscription(data.text);
-          } catch (error) {
-            console.error('Error transcribing audio:', error);
-            setError('Failed to transcribe audio. Please try again.');
-          } finally {
-            setIsLoading(false);
-            setIsRecording(false);
-          }
-        };
-
-        mediaRecorder.onerror = (event) => {
-          console.error("MediaRecorder error:", event);
-          setError("Error recording audio. Please try again.");
-        };
-
-        // Start recording with 1 second intervals
-        mediaRecorder.start(1000);
-        console.log("MediaRecorder started with state:", mediaRecorder.state);
-        mediaRecorderRef.current = mediaRecorder;
+        // Create new AudioRecorder instance
+        audioRecorderRef.current = new AudioRecorder();
+        
+        // Start recording
+        await audioRecorderRef.current.startRecording();
+        setIsRecording(true);
 
       } catch (error) {
-        console.error("Error accessing microphone: ", error);
-        let errorMessage = "Error accessing microphone. ";
-        
+        console.error("Error starting recording:", error);
+        let errorMessage = "Failed to start recording. ";
+
         if (error instanceof DOMException) {
           switch (error.name) {
             case "NotAllowedError":
-              errorMessage += "Please allow microphone access in your browser settings.";
+              errorMessage = "Please allow microphone access in your browser settings.";
               break;
             case "NotFoundError":
-              errorMessage += "No microphone found. Please connect a microphone and try again.";
+              errorMessage = "No microphone found. Please connect a microphone and try again.";
               break;
             case "NotReadableError":
-              errorMessage += "Microphone is in use by another application. Please close other apps using the microphone.";
-              break;
-            case "OverconstrainedError":
-              errorMessage += "Your microphone doesn't meet the required constraints.";
+              errorMessage = "Microphone is in use by another application.";
               break;
             default:
-              errorMessage += "Please check your microphone settings and try again.";
+              errorMessage += "Please check your microphone settings.";
           }
-        } else {
-          errorMessage += "Please check your browser permissions and make sure you're using Chrome.";
         }
-        
+
         setError(errorMessage);
         setIsRecording(false);
       }
     }
   };
 
-  const handleStopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+  const handleStopRecording = async () => {
+    if (audioRecorderRef.current && isRecording) {
       try {
-        console.log("Stopping MediaRecorder with state:", mediaRecorderRef.current.state);
+        console.log("Stopping recording...");
         
-        // Request final data chunk
-        mediaRecorderRef.current.requestData();
+        // Stop recording and get the audio blob
+        const audioBlob = await audioRecorderRef.current.stopRecording();
         
-        // Small delay to ensure we get the final chunk
-        setTimeout(() => {
-          mediaRecorderRef.current?.stop();
-          
-          if (mediaStream) {
-            mediaStream.getTracks().forEach((track) => {
-              track.stop();
-              console.log("Audio track stopped:", track.label);
-            });
-            setMediaStream(null);
-          }
-        }, 100);
+        // Create form data and send to API
+        const formData = new FormData();
+        formData.append("file", audioBlob, "recording.webm");
+
+        setIsLoading(true);
+        const response = await fetch("/api/transcribe", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to transcribe audio");
+        }
+
+        setTranscription(data.text);
       } catch (error) {
         console.error("Error stopping recording:", error);
-        setError("Error stopping recording. Please try again.");
+        setError(error instanceof Error ? error.message : "Failed to process recording");
+      } finally {
+        setIsLoading(false);
+        setIsRecording(false);
+        audioRecorderRef.current = null;
       }
     }
   };
@@ -280,7 +242,8 @@ const AudioUploader = () => {
             Audio Transcription App
           </h1>
           <p className="text-lg text-white/80 max-w-2xl mx-auto">
-            Upload your audio file or record directly to get started with transcription
+            Upload your audio file or record directly to get started with
+            transcription
           </p>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -316,8 +279,8 @@ const AudioUploader = () => {
                       {isRecording ? "Recording..." : "Drop or Click to Upload"}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-300">
-                      {isRecording 
-                        ? "Your audio is being recorded" 
+                      {isRecording
+                        ? "Your audio is being recorded"
                         : "Supported formats: MP3, WAV, M4A"}
                     </p>
                   </div>
@@ -417,7 +380,9 @@ const AudioUploader = () => {
               <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 dark:text-gray-400">
                 <FileAudio className="w-12 h-12 mb-4 opacity-50" />
                 <p className="text-lg">No transcription results yet.</p>
-                <p className="text-sm mt-2">Upload an audio file or start recording to see results here.</p>
+                <p className="text-sm mt-2">
+                  Upload an audio file or start recording to see results here.
+                </p>
               </div>
             )}
           </div>
